@@ -9,8 +9,8 @@
   ((= (vector-length argv) 1)
    (define in (open-input-string (vector-ref argv 0)))
    (define prog (calc-parse in))
-   ;;(write prog)
-   ;;(newline)
+   (write prog)
+   (newline)
    (mips-compile prog (make-immutable-hash))
    (close-input-port in))
   (else

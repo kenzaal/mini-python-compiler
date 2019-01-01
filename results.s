@@ -1,26 +1,11 @@
 
 .data
-t: .asciiz "\nTrue\n"
-m: .asciiz "\nNameError: the entered name is not defined\n"
 nl: .asciiz "\n"
-f: .asciiz "\nFalse\n"
+val: .word 22
 .text
 .globl main
 main:
-li $t0, 4
-li $t1, 5
-beq $t0, $t1, FALSE
-b TRUE
-FALSE:
-li $v0, 4
-la $a0, f
-syscall
-b next
-TRUE:
-li $v0, 4
-la $a0, t
-syscall
-next:
+lw $t0, val
 li $v0, 4
 la $a0, nl
 syscall

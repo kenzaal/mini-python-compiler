@@ -2,10 +2,11 @@
 
 (provide (all-defined-out))
 
-(struct Pval (val) #:transparent)
-(struct Pop (op v1 v2) #:transparent)
-(struct Pid (name) #:transparent)
-(struct Pdef (id expr) #:transparent)
+(struct Pval  (val)             #:transparent)
+(struct Pop   (op v1 v2)        #:transparent)
+(struct Pid   (name)            #:transparent)
+(struct Pdef  (id expr)         #:transparent)
+(struct Pcond (test yes no)     #:transparent)
 
 ;;;;; MIPS
 (struct Move (rd rs))
