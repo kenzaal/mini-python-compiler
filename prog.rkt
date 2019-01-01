@@ -11,7 +11,7 @@
    (define prog (calc-parse in))
    (write prog)
    (newline)
-   (mips-compile prog (make-immutable-hash))
+   (prog-eval prog (make-immutable-hash))
    (close-input-port in))
   (else
    (eprintf "Usage: racket prog.rkt \"prog\"\n")

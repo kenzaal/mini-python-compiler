@@ -6,13 +6,13 @@
 (provide calc-lex operators values names keywords punctuations)
 
 (define-empty-tokens keywords
- (Lif Lelse Eof))
+ (Lif Lelse Lprint Lopar Lcpar Lcot Lnl Eof))
 
 (define-empty-tokens punctuations
  (Lcol))
  
 (define-empty-tokens operators
-  (Lplus Lminus Lstar Lmod
+  (Lplus Lminus Lstar Lmod Land Lor Lnot 
    Lslash Lsup Linf Lseq Lieq Leq Lneq Lassign))
 
 (define-tokens names
@@ -40,6 +40,14 @@
    ("if"            (token-Lif))
    (":"             (token-Lcol))
    ("else"          (token-Lelse))
+   ("print"         (token-Lprint))
+   ("("             (token-Lopar))
+   (")"             (token-Lcpar))
+   ("'"             (token-Lcot))
+   ("\n"            (token-Lnl))
+   ("and"           (token-Land))
+   ("or"            (token-Lor))
+   ("not"           (token-Lnot))
    ((:+ alphabetic) (token-Lid (string->symbol lexeme)))
    ((:+ numeric)    (token-Lnum (string->number lexeme)))))
 

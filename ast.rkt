@@ -7,6 +7,9 @@
 (struct Pid   (name)            #:transparent)
 (struct Pdef  (id expr)         #:transparent)
 (struct Pcond (test yes no)     #:transparent)
+(struct Pcondthen (test yes)    #:transparent)
+(struct Pprint (expr)           #:transparent)
+(struct Block (expr)     #:transparent)
 
 ;;;;; MIPS
 (struct Move (rd rs))
@@ -30,6 +33,9 @@
 (struct Ble (r1 r2 lbl))
 (struct B (lbl))
 (struct Label (l))
+(struct And(rd r1 r2))
+(struct Or(rd r1 r2))
+(struct Not(rd r))
 
 ;; addresses
 (struct Lbl (l))   ;; label (souvent présent dans .data)

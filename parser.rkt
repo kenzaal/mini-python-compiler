@@ -9,47 +9,71 @@
 (define parse
   (parser
     (tokens operators values names punctuations keywords)
-     (start prog)
-     (end Eof)
-     (grammar
+    (start prog)
+    (end Eof)
+    (grammar
+
        (prog
-	  ((expr)              (list $1))
-          ((val Lassign expr)  (Pdef $1 $3))) 
+	  ((expr)              $1))
+
        (expr
           ((val)                $1)
           ((operation)          $1)
-          ((test)               $1))
+          ((test)               $1)
+          ((print)              $1)
+          ((declaration)        $1))
+
+      (declaration
+         ((Lid Lassign sexpr)  (Pdef $1 $3)))
+
+      (print
+        ((Lprint Lopar Lcot expr Lcot Lcpar)  (Pprint $4)))
+      
        (operation 
-          ((expr Lplus expr)   (Pop 'add $1 $3))
-	  ((expr Lminus expr)  (Pop 'sub $1 $3))
-          ((expr Lstar expr)   (Pop 'mul $1 $3))
-          ((expr Lslash expr)  (Pop 'div $1 $3))
-          ((expr Lsup expr)    (Pop 'sup $1 $3))
-          ((expr Linf expr)    (Pop 'inf $1 $3))
-          ((expr Lseq expr)    (Pop 'seq $1 $3))
-          ((expr Lieq expr)    (Pop 'ieq $1 $3))
-          ((expr Leq expr)     (Pop 'eq $1 $3))
-          ((expr Lneq expr)    (Pop 'neq $1 $3))
-          ((expr Lmod expr)    (Pop 'mod $1 $3)))
+          ;;;;;;;;Opérations arithmétiques;;;;;;
+          ((sexpr Lplus sexpr)   (Pop 'add $1 $3))
+	  ((sexpr Lminus sexpr)  (Pop 'sub $1 $3))
+          ((sexpr Lstar sexpr)   (Pop 'mul $1 $3))
+          ((sexpr Lslash sexpr)  (Pop 'div $1 $3))
+          ((sexpr Lmod sexpr)    (Pop 'mod $1 $3))
+          ;;;;;;;Operations de comparaisons;;;;;
+          ((sexpr Lsup sexpr)    (Pop 'sup $1 $3))
+          ((sexpr Linf sexpr)    (Pop 'inf $1 $3))
+          ((sexpr Lseq sexpr)    (Pop 'seq $1 $3))
+          ((sexpr Lieq sexpr)    (Pop 'ieq $1 $3))
+          ((sexpr Leq sexpr)     (Pop 'eq $1 $3))
+          ((sexpr Lneq sexpr)    (Pop 'neq $1 $3))
+          ;;;;;;;;Operations logiques;;;;;;;;;;;
+          ((sexpr Land sexpr)    (Pop 'and $1 $3))
+          ((sexpr Lor sexpr)     (Pop 'or $1 $3)))
+
        (val
           ((Lnum)              (Pval $1))
           ((Lid)               (Pid $1)))
+
        (test  
-          ((Lif expr Lcol expr Lelse Lcol expr)       (Pcond $2 $4 $7))))
-       (precs (left Lplus)
-              (left Lminus)
-              (left Lstar)
-              (left Lslash)
-              (left Lsup)
-              (left Linf)
-              (left Lseq)
-              (left Lieq)
-              (left Leq)
-              (left Lneq)
-              (left Lmod))
-       (error
-           (lambda (ok? name value)
-           (error 'Parser "Error?")))))
+          ((Lif expr Lcol expr Lelse Lcol expr)       (Pcond $2 $4 $7))
+          ((Lif expr Lcol expr)                       (Pcondthen $2 $4)))
+       (sexpr
+          ((val)    $1)
+          ((operation)  $1)))
+ 
+    (precs (left Lplus)
+           (left Lminus)
+           (left Lstar)
+           (left Lslash)
+           (left Lsup)
+           (left Linf)
+           (left Lseq)
+           (left Lieq)
+           (left Leq)
+           (left Lneq)
+           (left Lmod)
+           (left Land)
+           (left Lor))
+    (error
+        (lambda (ok? name value)
+        (error 'Parser "Error?")))))
 
 (define (calc-parse in)
   (parse (lambda () (calc-lex in))))
