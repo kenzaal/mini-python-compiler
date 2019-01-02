@@ -6,10 +6,10 @@
 (provide calc-lex operators values names keywords punctuations)
 
 (define-empty-tokens keywords
- (Lif Lelse Lprint Lopar Lcpar Lcot Lnl Eof))
+ (Lif Lelse Lprint Lopar Lcpar Lcot Lnl Lwhile Eof))
 
 (define-empty-tokens punctuations
- (Lcol))
+ (Lcol Lcom))
  
 (define-empty-tokens operators
   (Lplus Lminus Lstar Lmod Land Lor Lnot 
@@ -19,7 +19,7 @@
   (Lid))
 
 (define-tokens values
-  (Lnum))
+  (Lnum Lbool))
 
 (define calc-lex
   (lexer
@@ -28,7 +28,7 @@
    ("+"             (token-Lplus))
    ("-"             (token-Lminus))
    ("*"             (token-Lstar))
-   ("/"             (token-Lslash))
+   ("//"            (token-Lslash))
    (">"             (token-Lsup))
    ("<"             (token-Linf))
    (">="            (token-Lseq))
@@ -38,6 +38,7 @@
    ("%"             (token-Lmod))
    ("="             (token-Lassign))
    ("if"            (token-Lif))
+   ("while"         (token-Lwhile))
    (":"             (token-Lcol))
    ("else"          (token-Lelse))
    ("print"         (token-Lprint))
@@ -48,6 +49,18 @@
    ("and"           (token-Land))
    ("or"            (token-Lor))
    ("not"           (token-Lnot))
+   ("#"             (comment-lexer input-port))
+   ("\\n"           (calc-lex input-port))
+   (bool            (token-Lbool (string=? "True" lexeme)))
    ((:+ alphabetic) (token-Lid (string->symbol lexeme)))
    ((:+ numeric)    (token-Lnum (string->number lexeme)))))
+
+
+(define-lex-abbrev bool
+  (:or "True" "False"))
+
+(define comment-lexer
+  (lexer
+   ("\n"     (calc-lex input-port))
+   (any-char (comment-lexer input-port))))
 

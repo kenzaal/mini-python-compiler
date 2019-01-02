@@ -2,14 +2,16 @@
 
 (provide (all-defined-out))
 
-(struct Pval  (val)             #:transparent)
-(struct Pop   (op v1 v2)        #:transparent)
-(struct Pid   (name)            #:transparent)
-(struct Pdef  (id expr)         #:transparent)
-(struct Pcond (test yes no)     #:transparent)
-(struct Pcondthen (test yes)    #:transparent)
-(struct Pprint (expr)           #:transparent)
-(struct Block (expr)     #:transparent)
+(struct Pval      (val)             #:transparent)
+(struct Pop       (op v1 v2)        #:transparent)
+(struct Pid       (name)            #:transparent)
+(struct Pdef      (id expr)         #:transparent)
+(struct Pcond     (test yes no)     #:transparent)
+(struct Pprint    (expr)            #:transparent)
+(struct Pprint_op (expr)            #:transparent)
+(struct Pbool     (bool)            #:transparent)
+(struct Pnot      (op v)            #:transparent)
+(struct Ploop     (test instr)      #:transparent)
 
 ;;;;; MIPS
 (struct Move (rd rs))
@@ -35,7 +37,7 @@
 (struct Label (l))
 (struct And(rd r1 r2))
 (struct Or(rd r1 r2))
-(struct Not(rd r))
+(struct Xor(rd r1 r2))
 
 ;; addresses
 (struct Lbl (l))   ;; label (souvent présent dans .data)

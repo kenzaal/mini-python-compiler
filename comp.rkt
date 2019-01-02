@@ -6,24 +6,40 @@
 
 (require "ast.rkt" "lexer.rkt" "parser.rkt")
 
-(provide mips-emit mips-data mips-compile prog-eval)
+(provide mips-data prog-eval mips-exit main data-eval data)
 
+;;fonction principal pour savoir si le programme se compse d'une seule instruction ou bien d'un ensemble d'instructions
 (define (prog-eval prog env)
-  (write prog)
   (match prog
-    (expr expr)    (mips-compile prog env))
-    ;;((list expr)  (mips-compile prog env))
-    ((list expr1 exprs)  (mips-compile (list expr1) env) (prog-eval (mips-compile (list exprs) env) env)))
+    ((cons (Pdef id v) expr) (mips-compile (Pdef id v) env) (prog-eval expr env))
+    ((Pdef id v) (mips-compile prog env))
+    ((list expr) (mips-compile prog env))
+    ((cons expr1 expr2)  (mips-compile (list expr1) env) (prog-eval expr2 env))))
 
+;;défine les data des expressions
+(define (data-eval prog env)
+  (match prog
+    ((Pdef id v) (match-data (list prog) env))
+    ((list expr) (match-data prog env))
+    ((cons expr1 expr2)  (match-data (list expr1) env) (data-eval expr2 env))))
+
+;;affiche les instructions mips de fin de chaque programme 
+(define (mips-exit)
+  (printf "li $v0, 4\nla $a0, nl\nsyscall\nli $v0, 0\njr $ra\n"))
+ 
 ;;compiler les expressions et les opérations
 (define (comp prog env fp-sp) 
-  (match prog
+  (match prog 
+     ((Pbool b)              (if b 1 0)) 
+     (#f                     0)
+     (#t                     1)
      ((Pval v)               v)
      ((Pid name)             name)
      ((Pdef id expr)         (hash-set env id (comp expr env fp-sp))) ;; declaration de variables
      ((Pcond test yes no)    (hash-set env (comp test env fp-sp) (comp yes env fp-sp) (comp no env fp-sp)))
-     ((Pcondthen test yes)   (hash-set env (comp test env fp-sp) (comp yes env fp-sp) ))
+     ((Ploop test instr)     (hash-set env (comp test env fp-sp) (comp instr env fp-sp)))
      ((Pprint expr)          (hash-set env (comp expr env fp-sp)))
+     ((Pnot op v)            ('not (comp (not (comp v env fp-sp)) env fp-sp)))
      ((Pop op v1 v2)         (match op
                                 ('add (+  (comp v1 env fp-sp) (comp v2 env fp-sp)))
                                 ('sub (-  (comp v1 env fp-sp) (comp v2 env fp-sp)))
@@ -63,6 +79,7 @@
     ((Ble r1 r2 lbl)(printf "ble $~a, $~a, ~a\n" r1 r2 lbl))
     ((And rd r1 r2) (printf "and $~a, $~a, $~a\n"rd r1 r2))
     ((Or rd r1 r2)  (printf "or $~a, $~a, $~a\n"rd r1 r2))
+    ((Xor rd r1 r2) (printf "xor $~a, $~a, $~a\n"rd r1 r2))
     ((B lbl)        (printf "b ~a\n" lbl))
     ((Label l)      (printf "~a:\n" l))))
 
@@ -72,9 +89,11 @@
     ((Lbl l)   (format "~a" l))
     ((Mem b r) (format "~a($~a)" b r))))
 
+(define (data)
+   (printf"\n.data\n"))
+
 ;;cette fonction sert à charger des mots dans un .data
 (define (mips-data data)
-  (printf "\n.data\n")
   (hash-for-each data
      (lambda (k v)
 	     (if (number? v)
@@ -87,7 +106,6 @@
 
 ;;la fonction print-data sert à charger la chaîne de caractére mise dans le print dans le .data
 (define (print-data data)
-  (printf "\n.data\n")
   (hash-for-each data
     (lambda (k v)
       (printf "~a: .asciiz \"~s\"\n" k v))))
@@ -95,100 +113,202 @@
 ;;ces deux fonctions sont utilisé pour les instructions de if
 (define (mips-beq)   (printf "beq $v0, $0, Else\n"))
 (define (mips-label) (printf "b Endif\nElse:\n"))
- 
+(define (mips-loop)  (printf "loop:\nbeq $v0, $0, end_loop\n"))
+(define (mips-bloop) (printf "b loop\n"))
+
 ;;la fonction mips-if-compile match les programme que peut contenir un if
 (define (mips-if-compile prog env)
  (for-each mips-emit 
   (append
    (match prog
+     ((list (Pbool v))     (append (list (Li 'v0 (comp v env 0)))))
      ;;un numero
-     ((list (Pval v))      (append  (list (Li 'v0 v))))
+     ((list (Pval v))      (append (list (Li 'v0 v))))
      ;;déclaration de variable
      ((Pdef id v)          (append (list (Lw 't0 (Lbl 'val)))))
      ;;print
      ((list (Pprint expr)) (append (list (Li 'v0 4))
-                                   (list (La 'a0 (Lbl 'e)))
-                                   (list (Syscall)))))))) 
+                                   (list (La 'a0 (Lbl (comp expr env 0))))
+                                   (list (Syscall))
+                                   (list (Li 'v0 4))
+                                   (list (La 'a0 (Lbl 'nl)))
+								                   (list (Syscall))))
+    ;;afficher des opérations ,chiffres ou autres...
+    ((list (Pprint_op expr))
+     (list (mips-compile (list expr) env))
+     (append (list (Li 'v0 4))
+             (list (La 'a0 (Lbl 'nl)))
+					   (list (Syscall))))
+   ;;opération
+    ((list (Pop op v1 v2))
+        (match op 
+          ('add (append (list (Li 't0 (comp v1 env 0)))
+		                    (list (Addi 'v0 't0 (comp v2 env 0)))))
+          ('sub (append (list (Li 't0 (comp v1 env 0)))
+					              (list (Sub 'v0 't0 (comp v2 env 0)))))
+					('mul (append (list (Li 't0 (comp v1 env 0)))
+											  (list (Li 't1 (comp v2 env 0)))
+												(list (Mult 't0 't1))
+												(list (Mflo 's0))
+										    (list (Add 'v0 'zero 's0))))
+				  ('div (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Div 't0 't1))
+												(list (Mflo 's0))
+												(list (Add 'v0 'zero 's0))))
+					('sup (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Bgt 't0 't1 'TRUE))
+												(list (B 'FALSE))
+												(list (Label 'TRUE))
+                        (list (Li 'v0 1))
+												(list (B 'next))
+                        (list (Label 'FALSE))
+                        (list (Li 'v0 0))
+                        (list (Label 'next))))
+          ('inf (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Blt 't0 't1 'TRUE))
+												(list (B 'FALSE))
+												(list (Label 'TRUE))
+                        (list (Li 'v0 1))
+												(list (B 'next))
+                        (list (Label 'FALSE))
+                        (list (Li 'v0 0))
+                        (list (Label 'next))))
+          ('seq (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Bge 't0 't1 'TRUE))
+												(list (B 'FALSE))
+												(list (Label 'TRUE))
+                        (list (Li 'v0 1))
+												(list (B 'next))
+                        (list (Label 'FALSE))
+                        (list (Li 'v0 0))
+                        (list (Label 'next))))
+					('ieq (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Ble 't0 't1 'TRUE))
+												(list (B 'FALSE))
+												(list (Label 'TRUE))
+                        (list (Li 'v0 1))
+											  (list (B 'next))
+                        (list (Label 'FALSE))
+                        (list (Li 'v0 0))
+                        (list (Label 'next))))
+          ('eq  (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Beq 't0 't1 'TRUE))
+												(list (B 'FALSE))
+												(list (Label 'TRUE))
+                        (list (Li 'v0 1))
+												(list (B 'next))
+                        (list (Label 'FALSE))
+                        (list (Li 'v0 0))
+                        (list (Label 'next))))
+          ('neq (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+											  (list (Beq 't0 't1 'FALSE))
+												(list (B 'TRUE))
+												(list (Label 'FALSE))
+                        (list (Li 'v0 0))
+												(list (B 'next))
+                        (list (Label 'TRUE))
+                        (list (Li 'v0 1))
+                        (list (Label 'next))))
+          ('mod (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+												(list (Div 't0 't1))
+												(list (Mfhi 's0))
+												(list (Add 'v0 'zero 's0))))
+          ('and (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+                        (list (And 'v0 't0 't1))))
+          ('or  (append (list (Li 't0 (comp v1 env 0)))
+												(list (Li 't1 (comp v2 env 0)))
+                        (list (Or 'v0 't0 't1)))))))))) 
 
 ;;afficher les .data qui correspond au instructions du programme
 (define (match-data prog env)
  (append 
     (match prog
-      ((list (Pval v))        '())
-      ((list (Pid n))         (list (mips-data (make-hash '((n . "\nNameError: the entered name is not defined\n"))))))
-      ((list (Pdef id v))     (list (mips-data (hash 'val (comp v env 0)))))
-      ((list (Pop op v1 v2))  (list (mips-data (make-hash '((f . "\nFalse\n") (t . "\nTrue\n"))))))
-      ((list (Pprint expr))   (print-data (hash 'e (comp expr env 0)))))))
+      ((list (Pbool v))           '())
+      ((list (Pnot op v))         '())
+      ((list (Pval v))            '())
+      ((list (Pid n))             (list (mips-data (make-hash '((n . "\nNameError: the entered name is not defined\n"))))))
+      ((list (Pdef id v))         (mips-data (hash (comp id env 0) (comp v env 0))))
+      ((list (Pop op v1 v2))      '())
+      ((list (Pprint expr))       (print-data (hash (comp expr env 0) (comp expr env 0))))
+      ((list (Pcond test yes no)) 
+                                  (match-data (list test) env)
+       													  (match-data (list yes) env)
+       													  (match-data (list no) env))
+      ((list (Ploop test instr)) 
+                                  (match-data (list test) env)
+       													  (match-data (list instr) env))
+     ((list (Pprint_op expr))     (match-data (list expr) env)))))
 
 ;;traduction des expressions en instructions mips
 (define (mips-compile prog env)
-(mips-data (make-hash '((nl . "\n"))))
  (for-each mips-emit 
    (append
     (match prog
-      ((list expr1 expr2) (list (mips-compile (list expr1) env)) (list (mips-compile (list expr2) env))
-       (append (list (Li 't9 0))))
+       ((list (Pbool v))  (append (list (Li 'v0 1))
+                                  (list (La 'a0 (Lbl (comp v env 0))))
+                                  (list (Syscall)))) 
       ;; le code entré peut être un numero qui sera affiché aprés la compilation
-      ((list (Pval v)) 
-        (list (match-data prog env))
-        (list (main))   
-        (append  (list (Li 'v0 1))
-                 (list (La 'a0 (Lbl v)))
-                 (list (Syscall)))) 
+      ((list (Pval v))    (append  (list (Li 'v0 1))
+                                   (list (La 'a0 (Lbl v)))
+                                   (list (Syscall)))) 
                
       ;; ou un mot/lettre mais cela envoie un message d'erreur car le mot entré n'est pas identifié
-      ((list (Pid n))
-        (list (match-data prog env)) 
-        (list (main))    
-        (append (list (Li 'v0 4))
-                (list (La 'a0 (Lbl 'n)))
-                (list (Syscall))))              
-        	
-
+      ((list (Pid n))     (append (list (Li 'v0 4))
+                                  (list (La 'a0 (Lbl 'n)))
+                                  (list (Syscall))))              
+                                         
       ;; definition de varaibles
-      ((Pdef id v) 
-        (list (match-data (list prog) env));; pour afficher définir l'id dans le .data
-        (list (main)) ;;pour afficher les autres information .txt .globl main main:
-        (append (list (Lw 't0 (Lbl 'val)))))               
-          
+      ((Pdef id v)        (append (list (Lw 't0 (Lbl (comp id env 0))))))
 
       ;; if condition yes no
-      ((list (Pcond test yes no)) 
-        (match-data (list test) env)
-        (match-data (list yes) env)
-        (match-data (list no) env)
-        (main)                 
+      ((list (Pcond test yes no))   
         (mips-if-compile (list test) env)
         (mips-beq)
         (mips-if-compile (list yes) env)
         (mips-label)
         (mips-if-compile (list no) env)
-        (list (Label 'Endif)) )
-          
+        (list (Label 'Endif)))
     
-      ;; if condition yes 
-      ((list (Pcondthen test yes)) 
-        (match-data (list test) env)
-        (match-data (list yes) env) 
-        (main)                   
-        (mips-if-compile (list test) env)
-        (mips-beq)
-        (mips-if-compile (list yes) env)
-        (list (B 'Endif)))          
+     ;;while loop
+     ((list (Ploop test instr))
+       (mips-if-compile (list test) env)
+       (mips-loop)
+       (mips-if-compile (list instr) env)
+       (mips-bloop)
+       (list (Label 'end_loop)))
          
       ;;print('expr')
       ((list (Pprint expr))
-        (match-data (list expr) env)
-        (main)
         (append (list (Li 'v0 4))
-                (list (La 'a0 (Lbl 'e)))
-                (list (Syscall))))
-        
+                (list (La 'a0 (Lbl (comp expr env 0))))
+                (list (Syscall))
+                (list (Li 'v0 4))
+                (list (La 'a0 (Lbl 'nl)))
+								(list (Syscall))))
+      
+      ;;print a number or an operation ...
+      ((list (Pprint_op expr))
+        (list (mips-compile (list expr) env))
+        (append (list (Li 'v0 4))
+                (list (La 'a0 (Lbl 'nl)))
+								(list (Syscall))))
 
+       ((list (Pnot op v)) (append (list (Li 't0 (comp v env 0)))
+												           (list (Li 't1 1))
+                                   (list (Xor 'a0 't0 't1))
+                                   (list (Li 'v0 1))
+												           (list (Syscall)))) 
       ;; ou bien des operations                              
 	    ((list (Pop op v1 v2))
-        (match-data prog env)
-        (main)
         (match op 
           ('add (append (list (Li 't0 (comp v1 env 0)))
 		                    (list (Addi 't0 't0 (comp v2 env 0)))
@@ -316,10 +436,4 @@
                         (list (Or 't2 't0 't1))
                         (list (Li 'v0 1))
                         (list (Move 'a0 't2))
-												(list (Syscall)))))) )
-    ;;Ce bloc est présent dans tous les programmes spim traduit, il sart à faire un saut de ligne et à quitter le programme                               
-	  (list  (Li 'v0 4)																				 
-          (La 'a0 (Lbl 'nl))
-          (Syscall)
-          (Li 'v0 0)
-          (Jr 'ra)))))
+												(list (Syscall))))))))))
