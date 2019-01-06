@@ -11,9 +11,15 @@ simulateur spim et voici les instructions python qui peut interpréter :
 >les mots clés : False et True
 >les conditions if
 >les boucles while 
+>les boucles for
 >déclarations de variables
 >print pour afficher les chaînes de caractéres, chiffres, variables déclarées.
 >ingnorer les commentaires ex: # ceci est un commentaire.
+>déclaration de foncions
+>appel aux fonctions
+
+-Les fichiers test.py et function.py contiennent quelques test écrit en python que le mini-compilateur peut compiler.
+-Les fichiers error1.py et error2.py contiennent des erreurs que le compilateur peut détecter. 
 
 
 

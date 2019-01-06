@@ -1,13 +1,17 @@
-#Expressions arithmétiques 
-print(1 + 2*3)
-print(10-3-4)
-print (10//9%2) 
+#définition des fonctions
+
+def salutation(()):
+	for a in range (0, 3) :
+	   print('Salut')
 
 
-#Expressions booléennes et conditionnelles
-#print(not 1)
-print(True or False)
-print(5!=6)
-print(8>6)
-print(5==6)
-print(1 and 0)
+def boolean(()):
+	if True :
+  	print('yes')
+	else :
+  	print('no')
+  
+#appel aux fonctions 
+
+boolean(())
+salutation(())

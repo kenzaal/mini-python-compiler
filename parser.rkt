@@ -28,6 +28,7 @@
           ((return)             $1)
           ((test)               $1)
           ((loop)               $1)
+          ((for)                $1)
           ((print)              $1))
 
       (declaration
@@ -86,6 +87,9 @@
  
       (loop
           ((Lwhile expr Lcol expr)   (Ploop $2 $4)))
+
+     (for
+       ((Lfor Lid Lin Lrange Lopar Lnum Lcomma Lnum Lcpar Lcol expr)  (Pfor (Pid $2) (Pval $6) (Pval $8) $11)))
      
       (sexpr
           ((val)                $1)

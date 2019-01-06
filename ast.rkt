@@ -10,11 +10,12 @@
 (struct Pprint     (expr)            #:transparent)
 (struct Pprint_op  (expr)            #:transparent)
 (struct Pprint_var (expr)            #:transparent)
-(struct Pbool     (bool)            #:transparent)
-(struct Pnot      (op v)            #:transparent)
-(struct Ploop     (test instr)      #:transparent)
-(struct Pfunc     (id args expr)    #:transparent)
-(struct Pfuncall  (id args)         #:transparent)
+(struct Pbool      (bool)            #:transparent)
+(struct Pnot       (op v)            #:transparent)
+(struct Ploop      (test instr)      #:transparent)
+(struct Pfunc      (id args expr)    #:transparent)
+(struct Pfuncall   (id args)         #:transparent)
+(struct Pfor       (id v1 v2 expr)   #:transparent)
 
 ;;;;; MIPS
 (struct Move (rd rs))

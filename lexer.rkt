@@ -6,7 +6,8 @@
 (provide calc-lex operators values names keywords punctuations)
 
 (define-empty-tokens keywords
- (Lif Lelse Lprint Lopar Lcpar Lcot Lnl Lwhile Ldef Lret Lnil Eof))
+ (Lif Lelse Lprint Lopar Lcpar Lfor Lrange 
+  Lcot Lnl Lwhile Ldef Lret Lnil Eof Lin))
 
 (define-empty-tokens punctuations
  (Lcol Lcom Lcomma))
@@ -53,6 +54,9 @@
    ("or"            (token-Lor))
    (","             (token-Lcomma))
    ("not"           (token-Lnot))
+   ("for"           (token-Lfor))
+   ("range"         (token-Lrange))
+   ("in"            (token-Lin))
    ("#"             (comment-lexer input-port))
    ("\\n"           (calc-lex input-port))
    (bool            (token-Lbool (string=? "True" lexeme)))

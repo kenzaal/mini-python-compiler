@@ -27,6 +27,7 @@ a = 5
 print(a+1)
 print(a)
 
+
 #les fonctions
 def affichage(a) :
 	print(1+1)

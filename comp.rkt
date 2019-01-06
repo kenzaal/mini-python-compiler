@@ -28,6 +28,7 @@
 				((Pnot op v)           '())
         ((Pfuncall id args)    '())
         ((Pprint_var expr)     '())
+        ((Pfor id v1 v2 e)     '())
 				((Pop op v1 v2)        '()))))
     ((cons expr1 expr2)  (mips-function (list expr1) env) (mips-function expr2 env))))
 
@@ -52,10 +53,11 @@
         ((Pcond test yes no)    (match-data prog env))
         ((Ploop test instr)     (match-data prog env))
         ((Pprint expr)          (match-data prog env))
-        ((Pprint_op expr)       (match-data prog env))
-        ((Pprint_var expr)      (match-data prog env))
-        ((Pnot op v)            (match-data prog env))
-        ((Pop op v1 v2)         (match-data prog env))))
+        ((Pprint_op ex)       (match-data prog env))
+        ((Pprint_var ex)      (match-data prog env))
+        ((Pnot op v)           (match-data prog env))
+        ((Pfor id v1 v2 e)     (match-data (list e) env))
+        ((Pop op v1 v2)        (match-data prog env))))
         ((cons expr1 expr2)  (match-data (list expr1) env) (data-eval expr2 env))))
 
 ;;affiche les instructions mips de fin de chaque programme 
@@ -143,6 +145,13 @@
 (define (main)
   (printf "main:\n"))
 
+;;instructions du for
+(define (mips-for v1 v2)
+ (printf "li $t0, ~a\n" v1)
+ (printf "li $t1, ~a\n" v2)
+ (printf "for :\n")
+ (printf "beq $t1, $t0, end_for\naddi $t0, $t0, 1\n"))
+
 ;;la fonction print-data sert à charger la chaîne de caractére mise dans le print dans le .data
 (define (print-data data)
   (hash-for-each data
@@ -154,6 +163,7 @@
 (define (mips-label) (printf "b Endif\nElse:\n"))
 (define (mips-loop)  (printf "loop:\nbeq $v0, $0, end_loop\n"))
 (define (mips-bloop) (printf "b loop\n"))
+(define (for) (printf "j for\n"))
 
 ;;la fonction mips-if-compile match les programme que peut contenir un if
 (define (mips-if-compile prog env)
@@ -296,7 +306,9 @@
                                   (match-data (list test) env)
        													  (match-data (list instr) env))
      ((list (Pprint_op expr))     (match-data (list expr) env))
-     ((list (Pprint_var expr))     (match-data (list expr) env)))))
+     ((list (Pfuncall id args))   '())
+     ((list (Pfor id v1 v2 ex))   (match-data (list ex) env))
+     ((list (Pprint_var expr))    (match-data (list expr) env)))))
 
 ;;fonction qui sert à affecter chaque argument d'une fonction au registre $a qui lui correspond
 (define (func-args expr env n)
@@ -327,9 +339,8 @@
 
 			;;definition de fonctions
  			((list (Pfunc id args expr))  '())
-      
-     ((list (Pfuncall id args))     (append (list (Jal (comp id env 0)))
-                                            (list (Jr 'ra)))) 
+      ;;appel aux fonctions 
+     ((list (Pfuncall id args))     (append (list (Jal (comp id env 0))))) 
 
       ;; if condition yes no
       ((list (Pcond test yes no))   
@@ -347,6 +358,13 @@
        (mips-if-compile (list instr) env)
        (mips-bloop)
        (list (Label 'end_loop)))
+
+     ;;boucle for
+     ((list (Pfor id v1 v2 expr))
+       (mips-for (comp v1 env 0) (comp v2 env 0))
+       (mips-if-compile (list expr) env)
+       (for)
+       (list (Label 'end_for)))
          
       ;;print('expr')
       ((list (Pprint expr))

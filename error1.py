@@ -1,0 +1,3 @@
+#variable indéclarée
+
+var
