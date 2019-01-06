@@ -7,8 +7,22 @@ nl: .asciiz "\n"
 yes: .asciiz "yes"
 no: .asciiz "no"
 hello: .asciiz "hello"
+a: .word 5
+n: .asciiz "\nNameError: the entered name is not defined\n"
+
 .text
 .globl main
+affichage :
+li $t0, 1
+addi $t0, $t0, 1
+li $v0, 1
+move $a0, $t0
+syscall
+li $v0, 4
+la $a0, nl
+syscall
+j $ra
+
 main:
 li $t0, 1
 addi $t0, $t0, 6
@@ -55,18 +69,52 @@ la $a0, nl
 syscall
 li $t0, 5
 li $t1, 6
-beq $t0, $t1, FALSE
-b TRUE
-FALSE:
+beq $t0, $t1, neqFALSE
+b neqTRUE
+neqFALSE:
 li $v0, 4
 la $a0, f
 syscall
-b next
-TRUE:
+b neqnext
+neqTRUE:
 li $v0, 4
 la $a0, t
 syscall
-next:
+neqnext:
+li $v0, 4
+la $a0, nl
+syscall
+li $t0, 8
+li $t1, 6
+bgt $t0, $t1, supTRUE
+b supFALSE
+supTRUE:
+li $v0, 4
+la $a0, t
+syscall
+b supnext
+supFALSE:
+li $v0, 4
+la $a0, f
+syscall
+supnext:
+li $v0, 4
+la $a0, nl
+syscall
+li $t0, 5
+li $t1, 6
+beq $t0, $t1, eqTRUE
+b eqFALSE
+eqTRUE:
+li $v0, 4
+la $a0, t
+syscall
+b eqnext
+eqFALSE:
+li $v0, 4
+la $a0, f
+syscall
+eqnext:
 li $v0, 4
 la $a0, nl
 syscall
@@ -107,9 +155,22 @@ la $a0, nl
 syscall
 b loop
 end_loop:
+lw $t0, a
+addi $t0, $t0, 1
+li $v0, 1
+move $a0, $t0
+syscall
 li $v0, 4
 la $a0, nl
 syscall
-li $v0, 0
+lw $a0, a
+li $v0, 1
+syscall
+jal affichage
 jr $ra
+li $v0, 4
+la $a0, nl
+syscall
+li $v0, 10
+syscall
 

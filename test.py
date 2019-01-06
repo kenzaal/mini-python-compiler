@@ -6,8 +6,9 @@ print (10//9%2)
 #Expressions booléennes et conditionnelles
 print(not 1)
 print(True or False)
-#print(4>=5)
 print(5!=6)
+print(8>6)
+print(5==6)
 print(1 and 0)
 
 
@@ -21,4 +22,14 @@ else:
 while False :
   print('hello')
 
+#déclaration de variables
+a = 5
+print(a+1)
+print(a)
 
+#les fonctions
+def affichage(a) :
+	print(1+1)
+
+#appel aux fonctions
+affichage(a)

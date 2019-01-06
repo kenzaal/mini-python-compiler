@@ -1,31 +1,66 @@
-;; veuillez mettre la tabulation à 2 si ce n'est pas fait car les lignes risque de se decaler;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; veuillez mettre la tabulation à 2 si ce n'est pas fait, car les lignes risquent de se decaler;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 #lang racket/base
 
 (require racket/match)
 
 (require "ast.rkt" "lexer.rkt" "parser.rkt")
 
-(provide mips-data prog-eval mips-exit main data-eval data)
+(provide mips-data prog-eval mips-exit main text data-eval data mips-function)
+
+(define (mips-function prog env)
+  (match prog
+   ((list expr)
+    (for-each mips-emit
+     (match expr
+				((Pfunc id args instr) 
+                               (label (comp id env 0))
+                               (mips-compile (list instr) env)
+                               (list (J 'ra))) 
+				((Pbool v)             '())
+				((Pval v)              '())
+				((Pid n)               '())
+				((Pdef id v)           '())
+				((Pcond test yes no)   '())
+				((Ploop test instr)    '())
+				((Pprint expr)         '())
+				((Pprint_op expr)      '())
+				((Pnot op v)           '())
+        ((Pfuncall id args)    '())
+        ((Pprint_var expr)     '())
+				((Pop op v1 v2)        '()))))
+    ((cons expr1 expr2)  (mips-function (list expr1) env) (mips-function expr2 env))))
 
 ;;fonction principal pour savoir si le programme se compse d'une seule instruction ou bien d'un ensemble d'instructions
 (define (prog-eval prog env)
   (match prog
-    ((cons (Pdef id v) expr) (mips-compile (Pdef id v) env) (prog-eval expr env))
-    ((Pdef id v) (mips-compile prog env))
     ((list expr) (mips-compile prog env))
     ((cons expr1 expr2)  (mips-compile (list expr1) env) (prog-eval expr2 env))))
 
 ;;défine les data des expressions
 (define (data-eval prog env)
-  (match prog
-    ((Pdef id v) (match-data (list prog) env))
-    ((list expr) (match-data prog env))
-    ((cons expr1 expr2)  (match-data (list expr1) env) (data-eval expr2 env))))
+  (match prog 
+   ((list expr) 
+     (match expr 
+        ((Pfuncall id args)  '())
+        ((Pfunc id args expr) (match-data (list expr) env))
+        ((Pdef id v) (match-data prog env))
+        ((Pbool v)   (match-data prog env))
+        ((Pval v)    (match-data prog env))
+        ((Pid n)     (match-data prog env))
+        ((Pdef id v)  (match-data prog env))
+        ((Pcond test yes no)    (match-data prog env))
+        ((Ploop test instr)     (match-data prog env))
+        ((Pprint expr)          (match-data prog env))
+        ((Pprint_op expr)       (match-data prog env))
+        ((Pprint_var expr)      (match-data prog env))
+        ((Pnot op v)            (match-data prog env))
+        ((Pop op v1 v2)         (match-data prog env))))
+        ((cons expr1 expr2)  (match-data (list expr1) env) (data-eval expr2 env))))
 
 ;;affiche les instructions mips de fin de chaque programme 
 (define (mips-exit)
-  (printf "li $v0, 4\nla $a0, nl\nsyscall\nli $v0, 0\njr $ra\n"))
+  (printf "li $v0, 4\nla $a0, nl\nsyscall\nli $v0, 10\nsyscall\n"))
  
 ;;compiler les expressions et les opérations
 (define (comp prog env fp-sp) 
@@ -35,7 +70,7 @@
      (#t                     1)
      ((Pval v)               v)
      ((Pid name)             name)
-     ((Pdef id expr)         (hash-set env id (comp expr env fp-sp))) ;; declaration de variables
+     ((Pdef id expr)         (comp expr env fp-sp)) ;; declaration de variables
      ((Pcond test yes no)    (hash-set env (comp test env fp-sp) (comp yes env fp-sp) (comp no env fp-sp)))
      ((Ploop test instr)     (hash-set env (comp test env fp-sp) (comp instr env fp-sp)))
      ((Pprint expr)          (hash-set env (comp expr env fp-sp)))
@@ -72,6 +107,8 @@
     ((Lw r loc)     (printf "lw $~a, ~a\n" r (mips-loc loc)))
     ((Syscall)      (printf "syscall\n"))
     ((Jr r)         (printf "jr $~a\n" r))
+    ((J r)          (printf "j $~a\n" r))
+    ((Jal r)        (printf "jal ~a\n" r))
     ((Beq r1 r2 lbl)(printf "beq $~a, $~a, ~a\n" r1 r2 lbl))
     ((Bgt r1 r2 lbl)(printf "bgt $~a, $~a, ~a\n" r1 r2 lbl))
     ((Blt r1 r2 lbl)(printf "blt $~a, $~a, ~a\n" r1 r2 lbl))
@@ -101,8 +138,10 @@
            (printf "~a: .asciiz ~s\n" k v)))))
 
 ;;cette fonction affiche les informations nécessaire pour le programme spim
+(define (text)
+  (printf ".text\n.globl main\n"))
 (define (main)
-  (printf ".text\n.globl main\nmain:\n"))
+  (printf "main:\n"))
 
 ;;la fonction print-data sert à charger la chaîne de caractére mise dans le print dans le .data
 (define (print-data data)
@@ -125,7 +164,7 @@
      ;;un numero
      ((list (Pval v))      (append (list (Li 'v0 v))))
      ;;déclaration de variable
-     ((Pdef id v)          (append (list (Lw 't0 (Lbl 'val)))))
+     ((list (Pdef id v))          (append (list (Lw 't0 (Lbl 'val)))))
      ;;print
      ((list (Pprint expr)) (append (list (Li 'v0 4))
                                    (list (La 'a0 (Lbl (comp expr env 0))))
@@ -133,16 +172,25 @@
                                    (list (Li 'v0 4))
                                    (list (La 'a0 (Lbl 'nl)))
 								                   (list (Syscall))))
+
     ;;afficher des opérations ,chiffres ou autres...
     ((list (Pprint_op expr))
      (list (mips-compile (list expr) env))
      (append (list (Li 'v0 4))
              (list (La 'a0 (Lbl 'nl)))
 					   (list (Syscall))))
-   ;;opération
+
+  ;;afficher la valeur d'une varaible
+  ((list (Pprint_var expr)) (append (list (Lw 'a0 (Lbl (comp expr env 0))))
+                                    (list (Li 'v0 4))
+                                    (list (Syscall))))
+
+   ;;definition de fonctions
+ 			((list (Pfunc id args expr))  '())
+    ;;opération
     ((list (Pop op v1 v2))
         (match op 
-          ('add (append (list (Li 't0 (comp v1 env 0)))
+          ('add (append (list (Li 't0 (comp v1 env 0))) 
 		                    (list (Addi 'v0 't0 (comp v2 env 0)))))
           ('sub (append (list (Li 't0 (comp v1 env 0)))
 					              (list (Sub 'v0 't0 (comp v2 env 0)))))
@@ -235,6 +283,7 @@
       ((list (Pbool v))           '())
       ((list (Pnot op v))         '())
       ((list (Pval v))            '())
+      ((list (Pfunc id args instr))  (match-data (list instr) env))
       ((list (Pid n))             (list (mips-data (make-hash '((n . "\nNameError: the entered name is not defined\n"))))))
       ((list (Pdef id v))         (mips-data (hash (comp id env 0) (comp v env 0))))
       ((list (Pop op v1 v2))      '())
@@ -246,14 +295,21 @@
       ((list (Ploop test instr)) 
                                   (match-data (list test) env)
        													  (match-data (list instr) env))
-     ((list (Pprint_op expr))     (match-data (list expr) env)))))
+     ((list (Pprint_op expr))     (match-data (list expr) env))
+     ((list (Pprint_var expr))     (match-data (list expr) env)))))
 
+;;fonction qui sert à affecter chaque argument d'une fonction au registre $a qui lui correspond
+(define (func-args expr env n)
+  (match expr
+    ((list (Pid a))  (hash-set env a n))
+    ((cons a b)      ((hash-set env a n) (func-args (list b) env (+ n 1))))))
+(define (label l) (printf "~a :\n" l))
 ;;traduction des expressions en instructions mips
 (define (mips-compile prog env)
  (for-each mips-emit 
    (append
     (match prog
-       ((list (Pbool v))  (append (list (Li 'v0 1))
+      ((list (Pbool v))   (append (list (Li 'v0 1))
                                   (list (La 'a0 (Lbl (comp v env 0))))
                                   (list (Syscall)))) 
       ;; le code entré peut être un numero qui sera affiché aprés la compilation
@@ -267,7 +323,13 @@
                                   (list (Syscall))))              
                                          
       ;; definition de varaibles
-      ((Pdef id v)        (append (list (Lw 't0 (Lbl (comp id env 0))))))
+      ((list (Pdef id v))        (append (list (Lw 't0 (Lbl (comp id env 0))))))
+
+			;;definition de fonctions
+ 			((list (Pfunc id args expr))  '())
+      
+     ((list (Pfuncall id args))     (append (list (Jal (comp id env 0)))
+                                            (list (Jr 'ra)))) 
 
       ;; if condition yes no
       ((list (Pcond test yes no))   
@@ -302,6 +364,13 @@
                 (list (La 'a0 (Lbl 'nl)))
 								(list (Syscall))))
 
+    ;;afficher la valeur d'une varaible
+    ((list (Pprint_var expr)) (append (list (Lw 'a0 (Lbl (comp expr env 0))))
+                                      (list (Li 'v0 1))
+                                      (list (Syscall))))
+
+
+       ;;not
        ((list (Pnot op v)) (append (list (Li 't0 (comp v env 0)))
 												           (list (Li 't1 1))
                                    (list (Xor 'a0 't0 't1))
@@ -310,7 +379,7 @@
       ;; ou bien des operations                              
 	    ((list (Pop op v1 v2))
         (match op 
-          ('add (append (list (Li 't0 (comp v1 env 0)))
+          ('add (append (if (number? (comp v1 env 0)) (list (Li 't0 (comp v1 env 0))) '())
 		                    (list (Addi 't0 't0 (comp v2 env 0)))
 				                (list (Li 'v0 1))
 				                (list (Move 'a0 't0))						         
@@ -336,88 +405,88 @@
 		                    (list (Syscall))))
 					('sup (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
-												(list (Bgt 't0 't1 'TRUE))
-												(list (B 'FALSE))
-												(list (Label 'TRUE))
+												(list (Bgt 't0 't1 'supTRUE))
+												(list (B 'supFALSE))
+												(list (Label 'supTRUE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 't)))
                         (list (Syscall))
-												(list (B 'next))
-                        (list (Label 'FALSE))
+												(list (B 'supnext))
+                        (list (Label 'supFALSE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 'f)))
                         (list (Syscall))
-                        (list (Label 'next))))
+                        (list (Label 'supnext))))
           ('inf (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
-												(list (Blt 't0 't1 'TRUE))
-												(list (B 'FALSE))
-												(list (Label 'TRUE))
+												(list (Blt 't0 't1 'infTRUE))
+												(list (B 'infFALSE))
+												(list (Label 'infTRUE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 't)))
                         (list (Syscall))
-												(list (B 'next))
-                        (list (Label 'FALSE))
+												(list (B 'infnext))
+                        (list (Label 'infFALSE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 'f)))
                         (list (Syscall))
-                        (list (Label 'next))))
+                        (list (Label 'infnext))))
           ('seq (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
-												(list (Bge 't0 't1 'TRUE))
-												(list (B 'FALSE))
-												(list (Label 'TRUE))
+												(list (Bge 't0 't1 'seqTRUE))
+												(list (B 'seqFALSE))
+												(list (Label 'seqTRUE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 't)))
                         (list (Syscall))
-												(list (B 'next))
-                        (list (Label 'FALSE))
+												(list (B 'seqnext))
+                        (list (Label 'seqFALSE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 'f)))
                         (list (Syscall))
-                        (list (Label 'next))))
+                        (list (Label 'seqnext))))
 					('ieq (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
-												(list (Ble 't0 't1 'TRUE))
-												(list (B 'FALSE))
-												(list (Label 'TRUE))
+												(list (Ble 't0 't1 'ieqTRUE))
+												(list (B 'ieqFALSE))
+												(list (Label 'ieqTRUE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 't)))
                         (list (Syscall))
-											  (list (B 'next))
-                        (list (Label 'FALSE))
+											  (list (B 'ieqnext))
+                        (list (Label 'ieqFALSE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 'f)))
                         (list (Syscall))
-                        (list (Label 'next))))
+                        (list (Label 'ieqnext))))
           ('eq  (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
-												(list (Beq 't0 't1 'TRUE))
-												(list (B 'FALSE))
-												(list (Label 'TRUE))
+												(list (Beq 't0 't1 'eqTRUE))
+												(list (B 'eqFALSE))
+												(list (Label 'eqTRUE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 't)))
                         (list (Syscall))
-												(list (B 'next))
-                        (list (Label 'FALSE))
+												(list (B 'eqnext))
+                        (list (Label 'eqFALSE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 'f)))
                         (list (Syscall))
-                        (list (Label 'next))))
+                        (list (Label 'eqnext))))
           ('neq (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
-											  (list (Beq 't0 't1 'FALSE))
-												(list (B 'TRUE))
-												(list (Label 'FALSE))
+											  (list (Beq 't0 't1 'neqFALSE))
+												(list (B 'neqTRUE))
+												(list (Label 'neqFALSE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 'f)))
                         (list (Syscall))
-												(list (B 'next))
-                        (list (Label 'TRUE))
+												(list (B 'neqnext))
+                        (list (Label 'neqTRUE))
                         (list (Li 'v0 4))
                         (list (La 'a0 (Lbl 't)))
                         (list (Syscall))
-                        (list (Label 'next))))
+                        (list (Label 'neqnext))))
           ('mod (append (list (Li 't0 (comp v1 env 0)))
 												(list (Li 't1 (comp v2 env 0)))
 												(list (Div 't0 't1))
