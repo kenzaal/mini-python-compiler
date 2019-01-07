@@ -1,7 +1,8 @@
+;;Ce fichier contient les stuctures de l'arbre de syntaxe abstraite
 #lang racket/base
 
 (provide (all-defined-out))
-
+;;expressions de la grammaire du langage à compiler
 (struct Pval       (val)             #:transparent)
 (struct Pop        (op v1 v2)        #:transparent)
 (struct Pid        (name)            #:transparent)
@@ -16,8 +17,13 @@
 (struct Pfunc      (id args expr)    #:transparent)
 (struct Pfuncall   (id args)         #:transparent)
 (struct Pfor       (id v1 v2 expr)   #:transparent)
+(struct Pret       (expr)            #:transparent)
+(struct Pfargs     (a)		     #:transparent)
+(struct Pcallargs  (a)               #:transparent)
+(struct Pmax (a b)                   #:transparent)  
+(struct Pmin (a b)                   #:transparent)
 
-;;;;; MIPS
+;;instructions mips
 (struct Move (rd rs))
 (struct Li (r i))
 (struct La (r a))
@@ -41,6 +47,8 @@
 (struct Ble (r1 r2 lbl))
 (struct B (lbl))
 (struct Label (l))
+(struct Sll (d s i))
+(struct Srl (d s i))
 (struct And(rd r1 r2))
 (struct Or(rd r1 r2))
 (struct Xor(rd r1 r2))

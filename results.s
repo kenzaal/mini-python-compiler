@@ -7,9 +7,7 @@ nl: .asciiz "\n"
 yes: .asciiz "yes"
 no: .asciiz "no"
 hello: .asciiz "hello"
-b: .word 2
 a: .word 5
-n: .asciiz "\nNameError: the entered name is not defined\n"
 n: .asciiz "\nNameError: the entered name is not defined\n"
 
 .text
@@ -157,7 +155,6 @@ la $a0, nl
 syscall
 b loop
 end_loop:
-lw $t0, b
 lw $t0, a
 addi $t0, $t0, 1
 li $v0, 1
@@ -167,9 +164,6 @@ li $v0, 4
 la $a0, nl
 syscall
 lw $a0, a
-li $v0, 1
-syscall
-lw $a0, b
 li $v0, 1
 syscall
 jal affichage

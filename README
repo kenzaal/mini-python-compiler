@@ -1,25 +1,37 @@
-@author: SAAL Kenza
-
-⏺ mini python compiler :
+# mini python compiler :
 
  Ce projet consiste à écrire un compilateur d’un sous-ensemble du langage Python vers l’assembleur MIPS, En utilisant un langage fonctionnel (Racket) et le 
 simulateur spim et voici les instructions python qui peut interpréter :
 
->les opérations arétméthiques :+, -, * ,modulo,et //
->les opérations de comparaison :==, <>, <, <=, >, >=,!= 
->les opérations logiques: and, or et not
->les mots clés : False et True
->les conditions if
->les boucles while 
->les boucles for
->déclarations de variables
->print pour afficher les chaînes de caractéres, chiffres, variables déclarées.
->ingnorer les commentaires ex: # ceci est un commentaire.
->déclaration de foncions
->appel aux fonctions
+-les opérations arétméthiques :+, -, * ,modulo, **, et //
+-les opérations de comparaison :==, <>, <, <=, >, >=,!= 
+-les opérations logiques: and, or et not
+-les opérations de décalage de bits : << et >>
+-les mots clés : False et True
+-les conditions <if>
+-les boucles <while> 
+-les boucles <for>
+-les fonctions prédifinies max et min
+-déclarations de variables
+-print pour afficher les chaînes de caractéres, chiffres, variables déclarées.
+-ingnorer les commentaires ex: # ceci est un commentaire.
+-déclaration de foncions
+-appel aux fonctions
 
--Les fichiers test.py et function.py contiennent quelques test écrit en python que le mini-compilateur peut compiler.
--Les fichiers error1.py et error2.py contiennent des erreurs que le compilateur peut détecter. 
+## Les problémes de ce compilateur non résolues:
+-on ne peut pas utiliser une varaible déclarer (d'au moins on ne peut pas la modifier)
+-il ne détecte pas les variables et fonctions dupliquées
+-met une erreur quand on met deux opération qui on un label l'une à coté de l'autre exemple : "4>5 8>6" puis ce que les deux ont les mêmes nom de label en 
+mips.
+-on ne peut pas utiliser les arguments d'une fonction
+
+## Les difficultés rencontrées :
+coder les opérations étais l'étape la plus facile pour moi, mais dés que j'ai commencé avec les difinitions j'ai rencontré plusieurs difficultés dans la 
+gestion des envirenements car je n'arrivais pas à récuperer la valeur d'une clé que j'ai déjà mit dans un envirrenement.  
+
+
+-Les fichiers test1.py, test2.py et test3.py contiennent quelques test écrit en python que le mini-compilateur peut compiler.
+-Les fichiers error_lexer.py, error_parser.py, divisionperzero.py et error_undeclaredvar.py contiennent des erreurs que le compilateur peut détecter. 
 
 
 
